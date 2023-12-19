@@ -1,41 +1,94 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using SampleSolution.Api.Contexts;
+using SampleSolution.Api.Dtos;
+using SampleSolution.Core.Abstractions;
+using SampleSolution.Core.Dtos;
+using SampleSolution.Domain.Entities;
 
 namespace SampleSolution.Api.Controllers;
 
-[Authorize]
 [ApiController]
-[Route("api/users/{userId}/contacts")]
-public class UserContactController: ControllerBase
+[Authorize]
+[Route("api/users/contacts")]
+public class UserContactController : ControllerBase
 {
+    private readonly IUserContactService _userContactService;
+    private readonly UserManager<User> _userManager;
+
+    public UserContactController(IUserContactService userContactService, UserManager<User> userManager)
+    {
+        _userContactService = userContactService;
+        _userManager = userManager;
+    }
+
     [HttpGet]
-    public IActionResult GetAllUserContact(string userId)
+    public async Task<IActionResult> GetAllUserContact([FromQuery] PaginationFilter? paginationFilter = null)
     {
-        return Ok();
+        var userId = GetUserId();
+        paginationFilter ??= new PaginationFilter();
+        var user = await _userManager.GetUserAsync(User);
+        var roles = await _userManager.GetRolesAsync(user);
+        var result = await _userContactService.GetAllUserContacts(userId, paginationFilter);
+        return Ok(ResponseDto<object>.Success(result));
     }
-    
+
+    [HttpGet("search")]
+    public async Task<IActionResult> GetAllUserContact([FromQuery] string searchTerm,
+        [FromQuery] PaginationFilter? paginationFilter = null)
+    {
+        var userId = GetUserId();
+        paginationFilter ??= new PaginationFilter();
+        var result = await _userContactService.SearchUserContact(userId, searchTerm, paginationFilter);
+        return Ok(ResponseDto<object>.Success(result));
+    }
+
     [HttpGet("{id}")]
-    public IActionResult GetUserContactById(string userId, string id)
+    public async Task<IActionResult> GetUserContactById([FromRoute] string id)
     {
-        return Ok();
+        var userId = GetUserId();
+        var result = await _userContactService.GetUserContactById(userId, id);
+        if (result.IsFailure)
+            return BadRequest(ResponseDto<object>.Failure(result.Errors));
+
+        return Ok(ResponseDto<object>.Success(result.Data));
     }
-    
+
     [HttpPost]
-    public IActionResult CreateContact(string userId, [FromBody] object contactDto)
+    public async Task<IActionResult> CreateContact([FromBody] CreateContactDto contactDto)
     {
-        return Ok();
+        var userId = GetUserId();
+        await _userContactService.CreateContact(userId, contactDto);
+        return Ok(ResponseDto<object>.Success());
     }
-    
+
     [HttpPut("{id}")]
-    public IActionResult UpdateSingleContact(string userId, string id, [FromBody] object updatedContactDto)
+    public async Task<IActionResult> UpdateSingleContact([FromRoute] string id,
+        [FromBody] UpdateContactDto updatedContactDto)
     {
-        return Ok();
+        var userId = GetUserId();
+        var result = await _userContactService.UpdateContact(userId, id, updatedContactDto);
+
+        if (result.IsFailure)
+            return BadRequest(ResponseDto<object>.Failure(result.Errors));
+
+        return Ok(ResponseDto<object>.Success(result.Data));
     }
-    
+
     [HttpDelete("{id}")]
-    public IActionResult DeleteContact(string userId, string id)
+    public async Task<IActionResult> DeleteContact([FromRoute] string id)
     {
-        return Ok();
+        var userId = GetUserId();
+        var result = await _userContactService.DeleteContact(userId, id);
+
+        if (result.IsFailure)
+            return BadRequest(ResponseDto<object>.Failure(result.Errors));
+
+        return Ok(ResponseDto<object>.Success());
+    }
+
+    private string GetUserId()
+    {
+        return _userManager.GetUserId(User)!;
     }
 }

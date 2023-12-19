@@ -1,70 +1,40 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SampleSolution.Api.Contexts;
+﻿using Microsoft.AspNetCore.Mvc;
 using SampleSolution.Api.Dtos;
-using SampleSolution.Api.Models;
-using SampleSolution.Api.Services;
+using SampleSolution.Core.Abstractions;
+using SampleSolution.Core.Dtos;
 
 namespace SampleSolution.Api.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController: ControllerBase
+public class AuthController : ControllerBase
 {
-    private readonly UserManager<User> _userManager;
-    private readonly AppDbContext _context;
-    private readonly JwtService _jwtService;
+    private readonly IAuthService _authService;
 
-    public AuthController(UserManager<User> userManager, AppDbContext context, JwtService jwtService)
+    public AuthController(IAuthService authService)
     {
-        _userManager = userManager;
-        _context = context;
-        _jwtService = jwtService;
+        _authService = authService;
     }
 
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterUserDto registerUserDto)
     {
-        var user = new User
-        {
-            Name = registerUserDto.Name,
-            Email = registerUserDto.Email,
-            UserName = registerUserDto.Email,
-        };
+        var result = await _authService.Register(registerUserDto);
 
-        var result = await _userManager.CreateAsync(user, registerUserDto.Password);
-        if (!result.Succeeded)
-        {
-            return BadRequest(result.Errors);
-        }
-        
-        return Ok();
+        if (result.IsFailure)
+            return BadRequest(ResponseDto<object>.Failure(result.Errors));
+
+        return Ok(ResponseDto<object>.Success());
     }
-    
+
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginUserDto loginUserDto)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(user => user.Email == loginUserDto.Email);
+        var result = await _authService.Login(loginUserDto);
 
-        if (user is null)
-        {
-            return BadRequest("email or password invalid");
-        }
+        if (result.IsFailure)
+            return BadRequest(ResponseDto<object>.Failure(result.Errors));
 
-        // var isValidUser = user.PasswordHash == loginUserDto.Password;
-        var isValidUser = await _userManager.CheckPasswordAsync(user, loginUserDto.Password);
-        
-        if (!isValidUser)
-        {
-            return BadRequest("email or password invalid");
-        }
-
-        var token = _jwtService.GenerateToken(user);
-        
-        return Ok(new
-        {
-            token = token
-        });
+        return Ok(ResponseDto<object>.Success(result.Data));
     }
 }

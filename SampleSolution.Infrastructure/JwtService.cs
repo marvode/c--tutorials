@@ -1,12 +1,14 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using SampleSolution.Api.Models;
+using SampleSolution.Core.Abstractions;
+using SampleSolution.Domain.Entities;
 
-namespace SampleSolution.Api.Services;
+namespace SampleSolution.Infrastructure;
 
-public class JwtService
+public class JwtService : IJwtService
 {
     private readonly IConfiguration _config;
 
@@ -14,7 +16,7 @@ public class JwtService
     {
         _config = config;
     }
-    
+
     public string GenerateToken(User user)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -23,9 +25,10 @@ public class JwtService
 
         var claimList = new List<Claim>
         {
-            new (JwtRegisteredClaimNames.Sub, user.Id),
-            new (JwtRegisteredClaimNames.Name, user.Name),
-            new (JwtRegisteredClaimNames.Email, user.Email),
+            new(ClaimTypes.NameIdentifier, user.Id),
+            new(JwtRegisteredClaimNames.Sub, user.Id),
+            new(JwtRegisteredClaimNames.Name, user.Name),
+            new(JwtRegisteredClaimNames.Email, user.Email!)
         };
 
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -34,7 +37,8 @@ public class JwtService
             Issuer = _config.GetSection("JWT:Issuer").Value,
             Subject = new ClaimsIdentity(claimList),
             Expires = DateTime.UtcNow.AddDays(7),
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            SigningCredentials =
+                new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };
 
         return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
