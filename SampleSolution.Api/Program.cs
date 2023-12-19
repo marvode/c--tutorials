@@ -1,4 +1,5 @@
 using SampleSolution.Api.Extensions;
+using SampleSolution.Api.Middlewares;
 using SampleSolution.Infrastructure.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseMiddleware<ExceptionMiddleware>();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

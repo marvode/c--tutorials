@@ -5,21 +5,17 @@ namespace SampleSolution.Api.Dtos;
 
 public class ResponseDto<T>
 {
-    public ResponseDto()
-    {
-    }
-
-    public ResponseDto(T? data, string message, bool isSuccessful, int statusCode, IEnumerable<Error> errors)
+    public ResponseDto(T? data, string message, bool isSuccessful, int statusStatusCode, IEnumerable<Error> errors)
     {
         IsSuccessful = isSuccessful;
-        Code = statusCode;
+        StatusCode = statusStatusCode;
         Message = message;
         Data = data;
         Errors = errors;
     }
 
     public bool IsSuccessful { get; private set; }
-    public int Code { get; private set; }
+    public int StatusCode { get; private set; }
     public string Message { get; private set; }
     public T? Data { get; private set; }
     public IEnumerable<Error> Errors { get; private set; }
